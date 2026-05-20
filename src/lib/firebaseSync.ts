@@ -1,16 +1,15 @@
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db, auth } from './firebase';
 import { useAppStore } from '../store/useAppStore';
 
 let unsubscribeSnapshot: (() => void) | null = null;
-let isSyncing = true; // Start true to prevent local writes before first fetch
 let hasFetchedBefore = false;
+let isSettingStateFromRemote = false;
 
 export const startFirebaseSync = () => {
   auth.onAuthStateChanged((user) => {
     if (user) {
       console.log('User logged in, starting sync for:', user.uid);
-      isSyncing = true;
       hasFetchedBefore = false;
       
       if (unsubscribeSnapshot) unsubscribeSnapshot();
@@ -20,7 +19,7 @@ export const startFirebaseSync = () => {
       unsubscribeSnapshot = onSnapshot(userDocRef, (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.data();
-          isSyncing = true; 
+          isSettingStateFromRemote = true;
           
           useAppStore.setState(state => {
             return {
@@ -34,11 +33,11 @@ export const startFirebaseSync = () => {
           });
           
           hasFetchedBefore = true;
-          setTimeout(() => { isSyncing = false; }, 500);
+          // Synchronously clear the flag after Zustand updates listeners
+          isSettingStateFromRemote = false;
         } else {
           // Document doesn't exist, push current state to it
           hasFetchedBefore = true;
-          isSyncing = false;
           syncToFirebase();
         }
       }, (error) => {
@@ -47,7 +46,6 @@ export const startFirebaseSync = () => {
       
     } else {
       console.log('User logged out, stopping sync.');
-      isSyncing = false;
       hasFetchedBefore = false;
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
@@ -58,7 +56,7 @@ export const startFirebaseSync = () => {
 };
 
 export const syncToFirebase = async () => {
-  if (isSyncing || !hasFetchedBefore) return;
+  if (!hasFetchedBefore || isSettingStateFromRemote) return;
   
   const user = auth.currentUser;
   if (!user) return;

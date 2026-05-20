@@ -18,10 +18,13 @@ import { DailyHeatmap } from './components/heatmap/DailyHeatmap';
 import { ExecutionView } from './components/ExecutionView';
 import { PromptModal } from './components/PromptModal';
 import { Settings, BarChart2, Menu } from 'lucide-react';
-import { startFirebaseSync } from './lib/firebaseSync';
+import { startFirebaseSync, syncToFirebase } from './lib/firebaseSync';
+import { auth } from './lib/firebase';
+import { User } from 'firebase/auth';
 
 export default function App() {
   const { intentions, activeIntentionId, setActiveIntention, addIntention, deleteIntention, renameIntention, settings, updateSettings, runNightlyBuild } = useAppStore();
+  const [user, setUser] = useState<User | null>(null);
   const [showDocs, setShowDocs] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
@@ -41,14 +44,17 @@ export default function App() {
   useEffect(() => {
     startFirebaseSync();
     
+    const unsubAuth = auth.onAuthStateChanged((u) => setUser(u));
+
     // Subscribe to Zustand store for syncing
     const unsubscribe = useAppStore.subscribe((state, prevState) => {
-      import('./lib/firebaseSync').then(module => {
-        module.syncToFirebase();
-      });
+      syncToFirebase();
     });
     
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      unsubAuth();
+    };
   }, []);
 
   // Offline-first PDA Maintenance Window Daemon
@@ -230,6 +236,10 @@ export default function App() {
         </div>
 
         <div className="flex items-center space-x-4 md:space-x-6 text-xs font-mono">
+          <div className="flex items-center space-x-2" title={user ? `Connected as ${user.email}` : 'Local mode'}>
+            <div className={`w-2 h-2 rounded-full ${user ? 'bg-emerald-500' : 'bg-red-900 border border-red-500/50'}`}></div>
+            <span className="hidden xl:inline text-zinc-600 uppercase text-[9px] max-w-[150px] truncate">{user ? user.email : (ru ? 'Локальный режим' : 'Local mode')}</span>
+          </div>
           <button 
             onClick={() => setShowSettings(true)}
             className="text-zinc-500 hover:text-zinc-300 uppercase tracking-widest hidden md:block"
