@@ -80,7 +80,7 @@ export function ActionNode({ id, data }: { id: string, data: { label: string, du
                   type="text" 
                   inputMode="decimal"
                   className="w-6 bg-transparent text-center text-[9px] text-amber-500 font-mono outline-none"
-                  value={data.entropyWeight === undefined ? '' : data.entropyWeight}
+                  value={data.entropyWeight === undefined ? 1.0 : data.entropyWeight}
                   onChange={(e) => {
                     const val = e.target.value;
                     if (val === '') updateNodeData(id, { entropyWeight: undefined });

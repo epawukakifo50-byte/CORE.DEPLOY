@@ -1,20 +1,7 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
-import { get, set as idbSet, del } from 'idb-keyval';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { calculateEntropy, checkDowngrade } from '../lib/synaptic-math';
 import { type Node, type Edge } from '@xyflow/react';
-
-const storage: StateStorage = {
-  getItem: async (name: string): Promise<string | null> => {
-    return (await get(name)) || null;
-  },
-  setItem: async (name: string, value: string): Promise<void> => {
-    await idbSet(name, value);
-  },
-  removeItem: async (name: string): Promise<void> => {
-    await del(name);
-  },
-};
 
 export type IntentionStatus = 'ACTIVE' | 'ARCHIVED' | 'PRUNED';
 export type LogStatus = 'STAGED' | 'COMPILED' | 'REJECTED';
@@ -435,7 +422,7 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
   }),
 }), {
   name: 'core-deploy-storage',
-  storage: createJSONStorage(() => storage),
+  storage: createJSONStorage(() => localStorage),
   partialize: (state) => ({ 
     intentions: state.intentions,
     logs: state.logs,

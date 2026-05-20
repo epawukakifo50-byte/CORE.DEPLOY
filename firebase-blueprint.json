@@ -1,0 +1,22 @@
+{
+  "entities": {
+    "UserAppState": {
+      "title": "User App State",
+      "description": "The entire Zustand state for the user protocol",
+      "type": "object",
+      "properties": {
+        "intentions": { "type": "array" },
+        "logs": { "type": "array" },
+        "builds": { "type": "array" },
+        "settings": { "type": "object" },
+        "daemonValues": { "type": "object" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "UserAppState",
+      "description": "User entire app state for sync"
+    }
+  }
+}

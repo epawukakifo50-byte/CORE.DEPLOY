@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserAppState(data) {
+      return data.keys().hasAny(['intentions', 'logs', 'builds', 'settings', 'daemonValues'])
+        && (!('intentions' in data) || data.intentions is list)
+        && (!('logs' in data) || data.logs is list)
+        && (!('builds' in data) || data.builds is list)
+        && (!('settings' in data) || data.settings is map)
+        && (!('daemonValues' in data) || data.daemonValues is map);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId
+                    && isValidId(userId)
+                    && isValidUserAppState(incoming());
+      allow update: if isSignedIn() && request.auth.uid == userId
+                    && isValidId(userId)
+                    && isValidUserAppState(incoming());
+    }
+  }
+}

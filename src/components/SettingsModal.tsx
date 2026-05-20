@@ -1,4 +1,7 @@
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
+import { loginWithGoogle, logout, auth } from '../lib/firebase';
+import { User } from 'firebase/auth';
 
 const ColorPicker = ({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) => (
   <div className="flex items-center justify-between bg-zinc-950 p-2 border border-zinc-800 diagonal-cut">
@@ -25,6 +28,12 @@ const ColorPicker = ({ label, value, onChange }: { label: string, value: string,
 export function SettingsModal({ onClose, onOpenDocs }: { onClose: () => void, onOpenDocs: () => void }) {
   const { settings, updateSettings, runNightlyBuild } = useAppStore();
   const ru = settings.language === 'human';
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged(setUser);
+    return () => unsub();
+  }, []);
   
   return (
     <div className="absolute inset-0 z-[60] flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm p-4 md:p-8">
@@ -80,6 +89,30 @@ export function SettingsModal({ onClose, onOpenDocs }: { onClose: () => void, on
                 value={settings.colorWarn} 
                 onChange={(v) => updateSettings({ colorWarn: v })} 
               />
+            </div>
+          </section>
+
+          <section>
+            <h3 className="text-zinc-400 font-bold font-mono uppercase text-[10px] tracking-widest mb-3">{ru ? 'Аккаунт & Синхронизация' : 'Account & Sync'}</h3>
+            <div className="space-y-2 text-[10px] font-mono p-4 border border-zinc-800 bg-zinc-950 diagonal-cut">
+              {user ? (
+                <div className="space-y-2">
+                  <div className="text-emerald-500 uppercase flex items-center justify-between">
+                    <span>{ru ? 'Подключено' : 'Connected'}</span>
+                    <span className="text-zinc-400 lowercase">{user.email}</span>
+                  </div>
+                  <p className="text-zinc-500">{ru ? 'Данные синхронизируются с облаком.' : 'State is syncing to the cloud.'}</p>
+                  <button onClick={logout} className="w-full text-zinc-400 border border-zinc-800 pt-1 pb-1 hover:text-white hover:border-zinc-500 uppercase">{ru ? 'Выйти' : 'Sign out'}</button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="text-amber-500 uppercase">
+                    {ru ? 'Локальный режим' : 'Local Mode'}
+                  </div>
+                  <p className="text-zinc-500">{ru ? 'Войдите для синхронизации ПК и телефона.' : 'Sign in to sync between devices.'}</p>
+                  <button onClick={loginWithGoogle} className="w-full text-cyan-500 bg-cyan-900/20 border border-cyan-900/50 pt-1 pb-1 hover:bg-cyan-900/50 uppercase">{ru ? 'Войти через Гугл' : 'Connect Google'}</button>
+                </div>
+              )}
             </div>
           </section>
 

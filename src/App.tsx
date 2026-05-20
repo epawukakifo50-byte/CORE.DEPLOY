@@ -18,6 +18,7 @@ import { DailyHeatmap } from './components/heatmap/DailyHeatmap';
 import { ExecutionView } from './components/ExecutionView';
 import { PromptModal } from './components/PromptModal';
 import { Settings, BarChart2, Menu } from 'lucide-react';
+import { startFirebaseSync } from './lib/firebaseSync';
 
 export default function App() {
   const { intentions, activeIntentionId, setActiveIntention, addIntention, deleteIntention, renameIntention, settings, updateSettings, runNightlyBuild } = useAppStore();
@@ -36,6 +37,19 @@ export default function App() {
     initialValue?: string;
   }>({ isOpen: false, mode: 'create' });
   const ru = settings.language === 'human';
+
+  useEffect(() => {
+    startFirebaseSync();
+    
+    // Subscribe to Zustand store for syncing
+    const unsubscribe = useAppStore.subscribe((state, prevState) => {
+      import('./lib/firebaseSync').then(module => {
+        module.syncToFirebase();
+      });
+    });
+    
+    return () => unsubscribe();
+  }, []);
 
   // Offline-first PDA Maintenance Window Daemon
   useEffect(() => {
