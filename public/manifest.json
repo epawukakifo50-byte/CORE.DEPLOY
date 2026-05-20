@@ -1,0 +1,15 @@
+{
+  "name": "Synaptic Protocol",
+  "short_name": "Synaptic",
+  "description": "Cybernetic habit tracking environment",
+  "theme_color": "#09090b",
+  "background_color": "#09090b",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
