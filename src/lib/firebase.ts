@@ -6,42 +6,32 @@ import firebaseConfig from '../../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 
 // CRITICAL: The app will break without passing the specific database ID 
+// Export auth and db
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); 
 export const auth = getAuth(app);
 
-// Check for redirect result on load
-getRedirectResult(auth)
-  .then((result) => {
-    if (result) {
-      console.log('Redirect sign-in successful:', result.user.uid);
-    }
-  })
-  .catch((error) => {
-    console.error("Redirect sign-in error:", error);
-    alert(`Ошибка авторизации (Redirect): ${error.message}. Убедитесь, что домен ${window.location.hostname} добавлен в список Authorized Domains в Firebase Authentication.`);
-  });
-
 export const loginWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({
+    prompt: 'select_account'
+  });
+  
   try {
-    const isIframe = window !== window.parent;
-    if (isIframe) {
-      // In AI Studio Preview iframe, popup is the only way, but it might be blocked.
-      await signInWithPopup(auth, provider);
-    } else {
-      // On Vercel and mobile, redirect is far more stable.
-      // Trying popup first, fall back to redirect if needed, but let's just use popup
-      // unless on mobile. Actually let's just stick to redirect if not iframe for now.
-      await signInWithRedirect(auth, provider);
-    }
+    // We strictly use signInWithPopup because signInWithRedirect often fails 
+    // on Vercel (or other third-party domains) due to modern browsers blocking 
+    // third-party storage/cookies during the redirect flow.
+    await signInWithPopup(auth, provider);
   } catch (error: any) {
     if (error.code === 'auth/popup-closed-by-user') {
       console.log('Login popup closed by user.');
-      // Fallback: try redirect if popup blocked
-      await signInWithRedirect(auth, provider);
     } else {
       console.error("Login failed:", error);
-      alert(`Ошибка авторизации: ${error.message}. Проверьте Authorized Domains.`);
+      alert(`Ошибка авторизации: ${error.message}.`);
+      
+      // Only as a last resort fallback if popup is strictly blocked by the browser
+      if (error.code === 'auth/popup-blocked') {
+        alert('Всплывающее окно заблокировано. Пожалуйста, разрешите всплывающие окна для этого сайта.');
+      }
     }
   }
 };
