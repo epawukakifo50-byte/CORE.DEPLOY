@@ -39,7 +39,21 @@ export default function App() {
     targetId?: string;
     initialValue?: string;
   }>({ isOpen: false, mode: 'create' });
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const ru = settings.language === 'human';
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     startFirebaseSync();
@@ -237,8 +251,16 @@ export default function App() {
 
         <div className="flex items-center space-x-4 md:space-x-6 text-xs font-mono">
           <div className="flex items-center space-x-2" title={user ? `Connected as ${user.email}` : 'Local mode'}>
-            <div className={`w-2 h-2 rounded-full ${user ? 'bg-emerald-500' : 'bg-red-900 border border-red-500/50'}`}></div>
-            <span className="hidden xl:inline text-zinc-600 uppercase text-[9px] max-w-[150px] truncate">{user ? user.email : (ru ? 'Локальный режим' : 'Local mode')}</span>
+            {!isOnline ? (
+              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+            ) : (
+              <div className={`w-2 h-2 rounded-full ${user ? 'bg-emerald-500' : 'bg-red-900 border border-red-500/50'}`}></div>
+            )}
+            <span className="hidden xl:inline text-zinc-600 uppercase text-[9px] max-w-[150px] truncate">
+              {!isOnline 
+                ? (ru ? 'ОФФЛАЙН (КЭШ)' : 'OFFLINE (CACHE)')
+                : (user ? user.email : (ru ? 'Локальный режим' : 'Local mode'))}
+            </span>
           </div>
           <button 
             onClick={() => setShowSettings(true)}

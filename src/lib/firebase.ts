@@ -1,13 +1,27 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { getFirestore, enableMultiTabIndexedDbPersistence, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 
-// CRITICAL: The app will break without passing the specific database ID 
-// Export auth and db
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); 
+// Try using module-based persistence first for Firebase v10+
+// Fallback to getFirestore if initializeFirestore fails (though it shouldn't)
+let dbRef;
+try {
+  // In v9/10, initializeFirestore accepts (app, settings, databaseId)
+  dbRef = initializeFirestore(app, {
+    localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+  }, firebaseConfig.firestoreDatabaseId);
+} catch (e) {
+  // Fallback for older SDK versions or if already initialized
+  dbRef = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+  enableMultiTabIndexedDbPersistence(dbRef).catch((err) => {
+    console.warn("Firebase persistence error:", err);
+  });
+}
+
+export const db = dbRef; 
 export const auth = getAuth(app);
 
 export const loginWithGoogle = async () => {
