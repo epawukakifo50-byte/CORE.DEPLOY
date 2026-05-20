@@ -1,7 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-  <path d="M8 12h8"/>
-  <path d="M12 8v8"/>
-  <circle cx="12" cy="12" r="3"/>
-  <circle cx="12" cy="12" r="6" stroke-dasharray="2 2" stroke="#06b6d4" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="spaceBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B0F19"/>
+      <stop offset="100%" stop-color="#1A1125"/>
+    </linearGradient>
+
+    <linearGradient id="holoCyan" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00F0FF"/>
+      <stop offset="100%" stop-color="#5773FF"/>
+    </linearGradient>
+    <linearGradient id="holoMagenta" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF007F"/>
+      <stop offset="100%" stop-color="#7000FF"/>
+    </linearGradient>
+
+    <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="coreGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="20" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="115" fill="url(#spaceBg)"/>
+
+  <g transform="translate(256, 256)">
+    <circle cx="0" cy="0" r="160" fill="none" stroke="url(#holoCyan)" stroke-width="3" stroke-dasharray="4 12" opacity="0.6"/>
+
+    <path d="M-120,-100 Q-60,-160 0,-160 T120,-100" fill="none" stroke="url(#holoMagenta)" stroke-width="6" stroke-linecap="round" filter="url(#neonGlow)"/>
+    <circle cx="-120" cy="-100" r="8" fill="#FF007F" filter="url(#neonGlow)"/>
+
+    <path d="M120,100 Q60,160 0,160 T-120,100" fill="none" stroke="url(#holoCyan)" stroke-width="6" stroke-linecap="round" filter="url(#neonGlow)"/>
+    <circle cx="120" cy="100" r="8" fill="#00F0FF" filter="url(#neonGlow)"/>
+
+    <g filter="url(#coreGlow)">
+      <polygon points="0,-70 60,-35 60,35 0,70 -60,35 -60,-35" fill="none" stroke="url(#holoCyan)" stroke-width="8" opacity="0.9"/>
+      <polygon points="0,-45 39,-22 39,22 0,45 -39,22 -39,-22" fill="url(#holoMagenta)" opacity="0.8"/>
+      <circle cx="0" cy="0" r="15" fill="#FFFFFF"/>
+    </g>
+  </g>
 </svg>
