@@ -79,6 +79,13 @@ export default function App() {
   
   const activeIntention = intentions.find(i => i.id === activeIntentionId);
 
+  // Auto-recovery if activeIntentionId is out of sync
+  useEffect(() => {
+    if (!activeIntention && intentions.length > 0) {
+      setActiveIntention(intentions[0].id);
+    }
+  }, [activeIntention, intentions, setActiveIntention]);
+
   return (
     <div 
       className="bg-zinc-950 text-zinc-400 h-screen w-screen flex flex-col overflow-hidden font-sans"

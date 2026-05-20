@@ -429,5 +429,6 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
     builds: state.builds,
     settings: state.settings,
     daemonValues: state.daemonValues,
+    activeIntentionId: state.activeIntentionId,
   }),
 }));

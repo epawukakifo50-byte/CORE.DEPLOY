@@ -29,6 +29,7 @@ export const startFirebaseSync = () => {
               builds: data.builds || state.builds,
               settings: data.settings || state.settings,
               daemonValues: data.daemonValues || state.daemonValues,
+              activeIntentionId: data.activeIntentionId || state.activeIntentionId,
             };
           });
           
@@ -69,6 +70,7 @@ export const syncToFirebase = async () => {
     builds: state.builds,
     settings: state.settings,
     daemonValues: state.daemonValues,
+    activeIntentionId: state.activeIntentionId,
   };
 
   try {

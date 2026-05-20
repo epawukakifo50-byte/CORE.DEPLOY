@@ -142,6 +142,7 @@ export function SettingsModal({ onClose, onOpenDocs }: { onClose: () => void, on
                       builds: state.builds,
                       settings: state.settings,
                       daemonValues: state.daemonValues,
+                      activeIntentionId: state.activeIntentionId,
                     };
                     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
                     const url = URL.createObjectURL(blob);
