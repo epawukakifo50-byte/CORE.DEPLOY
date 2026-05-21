@@ -21,7 +21,17 @@ try {
   });
 }
 
-export const db = dbRef; 
+export const db = dbRef;
+export const wipeFirestoreCache = async () => {
+  try {
+    const { terminate, clearIndexedDbPersistence } = await import('firebase/firestore');
+    await terminate(db).catch(() => {});
+    await clearIndexedDbPersistence(db).catch(() => {});
+    window.location.reload();
+  } catch (e) {
+    console.error("Wipe failed", e);
+  }
+};
 export const auth = getAuth(app);
 
 export const loginWithGoogle = async () => {

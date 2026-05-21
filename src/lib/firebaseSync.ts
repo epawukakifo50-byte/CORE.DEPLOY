@@ -16,7 +16,11 @@ export const startFirebaseSync = () => {
       
       const userDocRef = doc(db, 'users', user.uid);
       
-      unsubscribeSnapshot = onSnapshot(userDocRef, (snapshot) => {
+      unsubscribeSnapshot = onSnapshot(userDocRef, { includeMetadataChanges: true }, (snapshot) => {
+        if (snapshot.metadata.hasPendingWrites) {
+          return;
+        }
+        
         if (snapshot.exists()) {
           const data = snapshot.data();
           isSettingStateFromRemote = true;
@@ -55,26 +59,31 @@ export const startFirebaseSync = () => {
   });
 };
 
-export const syncToFirebase = async () => {
+let syncTimeout: ReturnType<typeof setTimeout>;
+
+export const syncToFirebase = () => {
   if (!hasFetchedBefore || isSettingStateFromRemote) return;
   
-  const user = auth.currentUser;
-  if (!user) return;
+  if (syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(async () => {
+    const user = auth.currentUser;
+    if (!user) return;
 
-  const state = useAppStore.getState();
-  const data = {
-    intentions: state.intentions,
-    logs: state.logs,
-    builds: state.builds,
-    settings: state.settings,
-    daemonValues: state.daemonValues,
-    activeIntentionId: state.activeIntentionId,
-  };
+    const state = useAppStore.getState();
+    const data = {
+      intentions: state.intentions,
+      logs: state.logs,
+      builds: state.builds,
+      settings: state.settings,
+      daemonValues: state.daemonValues,
+      activeIntentionId: state.activeIntentionId,
+    };
 
-  try {
-    const userDocRef = doc(db, 'users', user.uid);
-    await setDoc(userDocRef, data, { merge: true });
-  } catch (err) {
-    console.error("Failed to push sync to firebase", err);
-  }
+    try {
+      const userDocRef = doc(db, 'users', user.uid);
+      await setDoc(userDocRef, data, { merge: true });
+    } catch (err) {
+      console.error("Failed to push sync to firebase", err);
+    }
+  }, 1000);
 };

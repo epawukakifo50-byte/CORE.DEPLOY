@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from './store/useAppStore';
 import { FlowCanvas } from './components/FlowCanvas';
 import { LogConsole } from './components/terminal/LogConsole';
@@ -19,8 +19,14 @@ import { ExecutionView } from './components/ExecutionView';
 import { PromptModal } from './components/PromptModal';
 import { Settings, BarChart2, Menu } from 'lucide-react';
 import { startFirebaseSync, syncToFirebase } from './lib/firebaseSync';
-import { auth } from './lib/firebase';
+import { wipeFirestoreCache, auth } from './lib/firebase';
 import { User } from 'firebase/auth';
+
+const FIX_V1 = 'fix_v1';
+if (!localStorage.getItem(FIX_V1)) {
+  localStorage.setItem(FIX_V1, 'true');
+  wipeFirestoreCache();
+}
 
 export default function App() {
   const { intentions, activeIntentionId, setActiveIntention, addIntention, deleteIntention, renameIntention, settings, updateSettings, runNightlyBuild } = useAppStore();
@@ -72,6 +78,11 @@ export default function App() {
   }, []);
 
   // Offline-first PDA Maintenance Window Daemon
+  const lastMaintenanceRunRef = useRef(settings.lastMaintenanceRun);
+  useEffect(() => {
+    lastMaintenanceRunRef.current = settings.lastMaintenanceRun;
+  }, [settings.lastMaintenanceRun]);
+
   useEffect(() => {
     const checkCron = () => {
       const now = new Date();
@@ -83,7 +94,8 @@ export default function App() {
       thresholdTime.setHours(h, m, 0, 0);
 
       // If we've passed the maintenance window time today, And we haven't run it yet today
-      if (now >= thresholdTime && settings.lastMaintenanceRun !== todayStr) {
+      if (now >= thresholdTime && lastMaintenanceRunRef.current !== todayStr) {
+        lastMaintenanceRunRef.current = todayStr; // Prevent immediate re-trigger
         runNightlyBuild();
         updateSettings({ lastMaintenanceRun: todayStr });
       }
@@ -95,7 +107,7 @@ export default function App() {
     // Check every minute
     const interval = setInterval(checkCron, 60000);
     return () => clearInterval(interval);
-  }, [settings.maintenanceWindow, settings.lastMaintenanceRun, runNightlyBuild, updateSettings]);
+  }, [settings.maintenanceWindow, runNightlyBuild, updateSettings]);
   
   const activeIntention = intentions.find(i => i.id === activeIntentionId);
 
