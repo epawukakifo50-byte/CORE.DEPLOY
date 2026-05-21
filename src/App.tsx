@@ -18,7 +18,6 @@ import { DailyHeatmap } from './components/heatmap/DailyHeatmap';
 import { ExecutionView } from './components/ExecutionView';
 import { PromptModal } from './components/PromptModal';
 import { Settings, BarChart2, Menu } from 'lucide-react';
-import { startFirebaseSync, syncToFirebase } from './lib/firebaseSync';
 import { wipeFirestoreCache, auth } from './lib/firebase';
 import { User } from 'firebase/auth';
 
@@ -62,17 +61,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    startFirebaseSync();
-    
     const unsubAuth = auth.onAuthStateChanged((u) => setUser(u));
-
-    // Subscribe to Zustand store for syncing
-    const unsubscribe = useAppStore.subscribe((state, prevState) => {
-      syncToFirebase();
-    });
     
     return () => {
-      unsubscribe();
       unsubAuth();
     };
   }, []);
@@ -95,6 +86,11 @@ export default function App() {
 
       // If we've passed the maintenance window time today, And we haven't run it yet today
       if (now >= thresholdTime && lastMaintenanceRunRef.current !== todayStr) {
+        if (localStorage.getItem('CRON_LOCK') === todayStr) {
+          lastMaintenanceRunRef.current = todayStr;
+          return;
+        }
+        localStorage.setItem('CRON_LOCK', todayStr);
         lastMaintenanceRunRef.current = todayStr; // Prevent immediate re-trigger
         runNightlyBuild();
         updateSettings({ lastMaintenanceRun: todayStr });

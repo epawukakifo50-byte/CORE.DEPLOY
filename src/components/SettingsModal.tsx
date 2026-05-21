@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { loginWithGoogle, logout, auth } from '../lib/firebase';
+import { loginWithGoogle, logout, auth, db } from '../lib/firebase';
 import { User } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 const ColorPicker = ({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) => (
   <div className="flex items-center justify-between bg-zinc-950 p-2 border border-zinc-800 diagonal-cut">
@@ -94,14 +95,58 @@ export function SettingsModal({ onClose, onOpenDocs }: { onClose: () => void, on
 
           <section>
             <h3 className="text-zinc-400 font-bold font-mono uppercase text-[10px] tracking-widest mb-3">{ru ? 'Аккаунт & Синхронизация' : 'Account & Sync'}</h3>
-            <div className="space-y-2 text-[10px] font-mono p-4 border border-zinc-800 bg-zinc-950 diagonal-cut">
+            <div className="space-y-3 text-[10px] font-mono p-4 border border-zinc-800 bg-zinc-950 diagonal-cut">
               {user ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="text-emerald-500 uppercase flex items-center justify-between">
                     <span>{ru ? 'Подключено' : 'Connected'}</span>
                     <span className="text-zinc-400 lowercase">{user.email}</span>
                   </div>
-                  <p className="text-zinc-500">{ru ? 'Данные синхронизируются с облаком.' : 'State is syncing to the cloud.'}</p>
+                  <p className="text-zinc-400 bg-amber-500/10 border border-amber-500/30 p-2 text-amber-500">{ru ? 'Авто-синхронизация отключена (лимиты базы). Пользуйтесь кнопками ниже.' : 'Auto-sync disabled to save quotas. Use manual buttons.'}</p>
+                  
+                  <div className="flex space-x-2">
+                    <button 
+                      onClick={async () => {
+                        try {
+                          const state = useAppStore.getState();
+                          const exportData = {
+                            intentions: state.intentions,
+                            logs: state.logs,
+                            builds: state.builds,
+                            settings: state.settings,
+                            daemonValues: state.daemonValues,
+                            activeIntentionId: state.activeIntentionId,
+                          };
+                          await setDoc(doc(db, 'users', user.uid), exportData, { merge: true });
+                          alert(ru ? 'Сохранено в облако!' : 'Saved to cloud!');
+                        } catch (err) {
+                          alert(ru ? 'Ошибка сохранения.' : 'Error saving.');
+                        }
+                      }}
+                      className="flex-1 text-emerald-500 border border-emerald-900/50 pt-2 pb-2 hover:bg-emerald-950 uppercase text-center diagonal-cut"
+                    >
+                      {ru ? 'В Облако' : 'Push'}
+                    </button>
+                    <button 
+                      onClick={async () => {
+                        try {
+                          const snap = await getDoc(doc(db, 'users', user.uid));
+                          if (snap.exists()) {
+                            useAppStore.getState().importData(snap.data());
+                            alert(ru ? 'Загружено из облака!' : 'Loaded from cloud!');
+                          } else {
+                            alert(ru ? 'В облаке нет данных.' : 'No data in cloud.');
+                          }
+                        } catch (err) {
+                          alert(ru ? 'Ошибка загрузки.' : 'Error loading.');
+                        }
+                      }}
+                      className="flex-1 text-cyan-500 border border-cyan-900/50 pt-2 pb-2 hover:bg-cyan-950 uppercase text-center diagonal-cut"
+                    >
+                      {ru ? 'Из Облака' : 'Pull'}
+                    </button>
+                  </div>
+
                   <button onClick={logout} className="w-full text-zinc-400 border border-zinc-800 pt-1 pb-1 hover:text-white hover:border-zinc-500 uppercase">{ru ? 'Выйти' : 'Sign out'}</button>
                 </div>
               ) : (
@@ -109,7 +154,7 @@ export function SettingsModal({ onClose, onOpenDocs }: { onClose: () => void, on
                   <div className="text-amber-500 uppercase">
                     {ru ? 'Локальный режим' : 'Local Mode'}
                   </div>
-                  <p className="text-zinc-500">{ru ? 'Войдите для синхронизации ПК и телефона.' : 'Sign in to sync between devices.'}</p>
+                  <p className="text-zinc-500">{ru ? 'Войдите для резервного копирования в облако.' : 'Sign in to back up data to the cloud.'}</p>
                   <button onClick={loginWithGoogle} className="w-full text-cyan-500 bg-cyan-900/20 border border-cyan-900/50 pt-1 pb-1 hover:bg-cyan-900/50 uppercase">{ru ? 'Войти через Гугл' : 'Connect Google'}</button>
                 </div>
               )}

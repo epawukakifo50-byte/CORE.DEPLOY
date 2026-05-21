@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { Reorder } from 'motion/react';
 
@@ -72,17 +72,24 @@ export function ExecutionView() {
     }).filter(Boolean) as { id: string, edge: any, trigger: any, action: any }[];
   })();
 
-  const [chains, setChains] = useState(chainsRaw);
+  const [chainIds, setChainIds] = useState(chainsRaw.map(c => c.id));
 
   useEffect(() => {
-    setChains(chainsRaw);
-  }, [activeIntention.graph.edges, activeIntentionId]);
+    const rawIds = chainsRaw.map(c => c.id);
+    const currentIds = chainIds;
+    // Fast array comparison to avoid setting state when same elements just reordered manually
+    if (rawIds.length !== currentIds.length || !rawIds.every(id => currentIds.includes(id))) {
+      setChainIds(rawIds);
+    }
+  }, [chainsRaw, chainIds]);
 
-  const handleReorder = (newChains: typeof chainsRaw) => {
-    setChains(newChains);
+  const pendingUpdate = useRef<NodeJS.Timeout | null>(null);
+
+  const handleReorder = (newIds: string[]) => {
+    setChainIds(newIds);
     
     // Sort edges based on new chain order
-    const orderMap = new Map(newChains.map((c, i) => [c.id, i]));
+    const orderMap = new Map(newIds.map((id, i) => [id, i]));
     const newEdges = [...activeIntention.graph.edges].sort((a, b) => {
       const aOrder = orderMap.get(a.id);
       const bOrder = orderMap.get(b.id);
@@ -92,10 +99,14 @@ export function ExecutionView() {
       return 0;
     });
 
-    updateGraph(activeIntention.id, {
-      nodes: activeIntention.graph.nodes,
-      edges: newEdges
-    });
+    if (pendingUpdate.current) clearTimeout(pendingUpdate.current);
+    pendingUpdate.current = setTimeout(() => {
+      updateGraph(activeIntention.id, {
+        nodes: activeIntention.graph.nodes,
+        edges: newEdges
+      });
+      pendingUpdate.current = null;
+    }, 500);
   };
 
   const ru = settings.language === 'human';
@@ -112,10 +123,10 @@ export function ExecutionView() {
     l.chainId
   );
   
-  const validChainIds = new Set(chains.map(c => c.id));
+  const validChainIds = new Set(chainsRaw.map(c => c.id));
   const completedChainIds = new Set(completedTodayLogs.filter(l => l.chainId && validChainIds.has(l.chainId)).map(l => l.chainId as string));
   
-  chains.forEach(chain => {
+  chainsRaw.forEach(chain => {
     if (chain.action.data.actionType === 'daemon') {
       const target = Number(chain.action.data.metricTarget) || 10000;
       const current = daemonValues[chain.id] || 0;
@@ -128,7 +139,7 @@ export function ExecutionView() {
   });
 
   const uniqueCompletedChainsCount = completedChainIds.size;
-  const totalChainsCount = chains.length;
+  const totalChainsCount = chainsRaw.length;
   
   const allCompleted = totalChainsCount > 0 && uniqueCompletedChainsCount >= totalChainsCount;
 
@@ -145,14 +156,16 @@ export function ExecutionView() {
         </div>
 
         {/* Execution chains generated from connections */}
-        <Reorder.Group axis="y" values={chains} onReorder={handleReorder} className="space-y-6">
-          {chains.length === 0 && (
+        <Reorder.Group axis="y" values={chainIds} onReorder={handleReorder} className="space-y-6">
+          {chainIds.length === 0 && (
             <div className="p-4 bg-zinc-950 border border-zinc-800 border-dashed text-xs text-zinc-600 font-mono italic">
               {ru ? 'Пусто: Нет связанных цепочек в графе. Соедините Триггер и Действие.' : 'Void: No connected chains defined in Graph. Connect a Trigger to an Action.'}
             </div>
           )}
 
-          {chains.map(chain => {
+          {chainIds.map(id => {
+            const chain = chainsRaw.find(c => c.id === id);
+            if (!chain) return null;
             const exec = activeExecutions.find(e => e.intentionId === activeIntention.id && e.chainId === chain.id);
             const chainName = `${chain.trigger.data.label} -> ${chain.action.data.label}`;
             const duration = Number(chain.action.data.durationMinutes) || 0;
@@ -188,7 +201,7 @@ export function ExecutionView() {
             if (actionType === 'daemon') shapeClass = "rounded-lg border-dashed";
 
             return (
-              <Reorder.Item key={chain.id} value={chain} className={`bg-zinc-900 border border-zinc-800 flex flex-col pt-4 shadow-xl cursor-grab relative ${shapeClass} ${isStale ? 'opacity-50 grayscale' : ''}`}>
+              <Reorder.Item key={chain.id} value={id} className={`bg-zinc-900 border border-zinc-800 flex flex-col pt-4 shadow-xl cursor-grab relative ${shapeClass} ${isStale ? 'opacity-50 grayscale' : ''}`}>
                 <div className="absolute top-2 right-4 text-zinc-700 pointer-events-none flex items-center space-x-2">
                   {isTimeBound && timeInfo && !isCompletedToday && (
                     <span className={`text-[9px] font-mono tracking-widest px-1.5 py-0.5 border ${isStale ? 'text-red-500 border-red-500/30 bg-red-500/10' : isPendingStart ? 'text-zinc-500 border-zinc-800' : 'text-amber-500 border-amber-500/30 bg-amber-500/10'}`}>
