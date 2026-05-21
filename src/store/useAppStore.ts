@@ -323,7 +323,7 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
               const chainEdge = intention.graph.edges.find(e => e.id === l.chainId);
               const action = chainEdge ? intention.graph.nodes.find(n => n.id === chainEdge.target) : null;
               const weight = (action?.data?.entropyWeight as number) || 1.0;
-              newEntropy += 0.5 * weight;
+              newEntropy += 0.2 * weight;
               hasPenalty = true;
               penaltyReasons.push(`Time deviation on ${action?.data?.label || l.chainId}`);
            }
@@ -356,8 +356,8 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
            hasPenalty = true;
            let missedPenalty = 0;
            missedChains.forEach(chainLabel => {
-              // We could look up the action weight, assume 1.0 for simplicity
-              missedPenalty += 0.5;
+              // Softer penalty for missed chains
+              missedPenalty += 0.2;
            });
            newEntropy += missedPenalty;
            penaltyReasons.push(`Incomplete chains: ${missedChains.join(', ')}`);
@@ -373,15 +373,20 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
            }
         }
 
-        if (hasPenalty) {
-           buildStatus = 'DOWNGRADE';
-           get().logMessage(`[WARN] Protocol ${intention.name} compiled with penalties. Reasons: ${penaltyReasons.join(', ')}. Entropy: ${newEntropy.toFixed(2)}`, 'warning', intention.id);
-        } else {
-           // Success: Increase patch, reset entropy
+        // Forgiving check: if user completed at least 50% of the protocol chains (or there were no chains), they advance
+        if (completionRate >= 0.5 || intention.graph.edges.length === 0) {
            newVersion.patch += 1;
-           newEntropy = Math.max(0, newEntropy - 1); // reduce entropy, but maybe not fully reset instantly
            buildStatus = 'SUCCESS';
-           get().logMessage(`[COMPILE] Protocol ${intention.name} updated to v${newVersion.major}.${newVersion.minor}.${newVersion.patch} (Score: +${completedChains.length}). Entropy reduced to ${newEntropy.toFixed(2)}`, 'success', intention.id);
+           if (hasPenalty) {
+              get().logMessage(`[COMPILE] Protocol ${intention.name} updated to v${newVersion.major}.${newVersion.minor}.${newVersion.patch} with warnings. Reasons: ${penaltyReasons.join(', ')}. Entropy: ${newEntropy.toFixed(2)}`, 'warning', intention.id);
+           } else {
+              newEntropy = Math.max(0, newEntropy - 1); // reduce entropy
+              get().logMessage(`[COMPILE] Protocol ${intention.name} perfectly compiled to v${newVersion.major}.${newVersion.minor}.${newVersion.patch} (Score: +${completedChains.length}). Entropy reduced to ${newEntropy.toFixed(2)}`, 'success', intention.id);
+           }
+        } else {
+           buildStatus = 'DOWNGRADE';
+           newEntropy += 0.5; // Additional penalty for failing the protocol day
+           get().logMessage(`[WARN] Protocol ${intention.name} compiled with critical penalties (<50% complete). Reasons: ${penaltyReasons.join(', ')}. Entropy: ${newEntropy.toFixed(2)}`, 'error', intention.id);
         }
         
         stagedLogs.forEach(l => l.status = 'COMPILED');
